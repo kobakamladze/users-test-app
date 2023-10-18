@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+  users_service:
+    container_name: users_service
+    build: ./users-service
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - /app/node_modules
+      - ./users-service:/app
+    depends_on:
+      - users_service_db
+    environment:
+      SQL_DIALECT: postgres
+      DATABASE_HOST: users_service_db
+      DATABASE_PORT: 5432
+      DATABASE_USER: root
+      DATABASE_PASSWORD: root
+      DATABASE_NAME: users_service_db
+      SALT: 10
+      EVENTS_SERVICE_URL: http://events_service:3000
+
+  users_service_db:
+    image: postgres:alpine
+    container_name: users_service_db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: users_service_db
+    volumes:
+      - ./users_service_db_data:/var/lib/postgresql/data
+
+  events_service:
+    container_name: events_service
+    build: ./events-service
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - /app/node_modules
+      - ./events-service:/app
+    depends_on:
+      - events_service_db
+    environment:
+      DATABASE_HOST: events_service_db
+      DATABASE_PORT: 5432
+      DATABASE_USER: root
+      DATABASE_PASSWORD: root
+      DATABASE_NAME: events_service_db
+
+  events_service_db:
+    image: postgres:alpine
+    container_name: events_service_db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: events_service_db
+    volumes:
+      - ./events_service_db_data:/var/lib/postgresql/data
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: test@test.com
+      PGADMIN_DEFAULT_PASSWORD: test1
+    logging:
+      driver: none
+    depends_on:
+      - events_service_db
+      - users_service_db
+      - events_service
+      - users_service
+    ports:
+      - "5050:80"
+
+volumes:
+  users_service_db_data:
+  events_service_db_data:
